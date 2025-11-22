@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+bun.lock
+
+# Build output
+index.mjs
+dist/
+
+# Development
+dev/
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+.cursor/
+.claude/
+
+# MCP config
+.mcp.json
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# Logs
+*.log
+npm-debug.log*
+
+# HYTOPIA cache
+.optimized/
+
+# Zip files (extracted already)
+*.zip

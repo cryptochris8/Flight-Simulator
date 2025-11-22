@@ -1,0 +1,14 @@
+{
+  "name": "hytopia-flight-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "hytopia start"
+  },
+  "dependencies": {
+    "hytopia": "^0.14.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

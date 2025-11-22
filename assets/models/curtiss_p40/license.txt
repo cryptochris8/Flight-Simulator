@@ -1,0 +1,11 @@
+Model Information:
+* title:	Curtiss P40 Airplane
+* source:	https://sketchfab.com/3d-models/curtiss-p40-airplane-341cc6469d804f0594b0a977272e4b3a
+* author:	Javier Martín Hidalgo (https://sketchfab.com/Jj.Mmhh)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Curtiss P40 Airplane" (https://sketchfab.com/3d-models/curtiss-p40-airplane-341cc6469d804f0594b0a977272e4b3a) by Javier Martín Hidalgo (https://sketchfab.com/Jj.Mmhh) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
