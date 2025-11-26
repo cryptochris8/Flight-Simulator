@@ -31,6 +31,129 @@ and also configure additional buttons for mobile compatibility.
     mobileJumpButton.classList.remove('active');
     hytopia.pressInput(' ', false);
   });
+
+  // ========== Hangar UI State ==========
+  let currentHangarId = null;
+  let hangarPlanes = [];
+
+  // ========== Hangar UI Functions ==========
+  function showHangarUI(hangarId, planes) {
+    const overlay = document.getElementById('hangar-overlay');
+    const title = document.getElementById('hangar-title');
+    const list = document.getElementById('plane-list');
+
+    title.textContent = `Hangar ${hangarId.replace('hangar_', '')}`;
+    list.innerHTML = '';
+
+    planes.forEach(plane => {
+      const item = document.createElement('div');
+      item.className = 'plane-item';
+
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'plane-name';
+      nameDiv.textContent = plane.name;
+
+      const classDiv = document.createElement('div');
+      classDiv.className = 'plane-class ' + plane.class;
+      classDiv.textContent = plane.class.toUpperCase();
+
+      const statsDiv = document.createElement('div');
+      statsDiv.className = 'plane-stats';
+      if (plane.stats) {
+        statsDiv.textContent = 'Speed: ' + plane.stats.maxSpeed + ' | Handling: ' + plane.stats.handling + ' | Accel: ' + plane.stats.acceleration;
+      }
+
+      const selectBtn = document.createElement('button');
+      selectBtn.className = 'select-plane-btn';
+      selectBtn.textContent = 'Select';
+      selectBtn.setAttribute('data-plane-id', plane.id);
+
+      item.appendChild(nameDiv);
+      item.appendChild(classDiv);
+      item.appendChild(statsDiv);
+      item.appendChild(selectBtn);
+      list.appendChild(item);
+    });
+
+    overlay.style.display = 'flex';
+  }
+
+  function closeHangarUI() {
+    document.getElementById('hangar-overlay').style.display = 'none';
+    currentHangarId = null;
+    hangarPlanes = [];
+  }
+
+  function selectPlane(planeId) {
+    if (!currentHangarId) return;
+    hytopia.sendData({
+      type: 'PLANE_SELECTION_CONFIRMED',
+      hangarId: currentHangarId,
+      planeId: planeId
+    });
+    closeHangarUI();
+  }
+
+  // ========== Event Delegation for Hangar UI ==========
+  // Use event delegation to handle clicks on dynamically created buttons
+  document.addEventListener('click', function(e) {
+    // Handle close button
+    if (e.target && e.target.id === 'hangar-close') {
+      closeHangarUI();
+    }
+    // Handle select plane buttons
+    if (e.target && e.target.classList.contains('select-plane-btn')) {
+      const planeId = e.target.getAttribute('data-plane-id');
+      if (planeId) {
+        selectPlane(planeId);
+      }
+    }
+  });
+
+  // ========== Flight HUD Update ==========
+  hytopia.onData(function(data) {
+    // Flight data update
+    if (data.type === 'flight-update') {
+      document.getElementById('speed-value').textContent = data.speed;
+      document.getElementById('altitude-value').textContent = data.altitude;
+      document.getElementById('throttle-value').textContent = data.throttle + '%';
+      document.getElementById('checkpoint-value').textContent = data.checkpoint + '/' + data.totalCheckpoints;
+      document.getElementById('laps-value').textContent = data.laps;
+
+      // Update mode indicator
+      var modeEl = document.getElementById('mode-indicator');
+      modeEl.textContent = data.mode;
+      modeEl.className = data.isGrounded ? 'taxi' : 'flight';
+    }
+
+    // Hangar prompt update
+    if (data.type === 'hangar-prompt') {
+      var promptEl = document.getElementById('hangar-prompt');
+      if (data.show) {
+        promptEl.textContent = data.text;
+        promptEl.style.display = 'block';
+      } else {
+        promptEl.style.display = 'none';
+      }
+    }
+
+    // Hangar contents received from server
+    if (data.type === 'HANGAR_CONTENTS') {
+      currentHangarId = data.hangarId;
+      hangarPlanes = data.planes;
+      showHangarUI(data.hangarId, data.planes);
+    }
+
+    // Plane spawned - close hangar UI
+    if (data.type === 'PLANE_SPAWNED') {
+      closeHangarUI();
+    }
+
+    // Hangar error
+    if (data.type === 'HANGAR_ERROR') {
+      alert('Hangar Error: ' + data.error);
+    }
+  });
 </script>
 
 <!--
@@ -41,6 +164,30 @@ and also configure additional buttons for mobile compatibility.
   Remember, HYTOPIA sandboxes your UI & UI scripts, so external network requests or
   other unsafe actions likely won't work as you expect in production.
 -->
+
+<!-- Flight HUD -->
+<div id="flight-hud">
+  <div id="mode-indicator" class="taxi">TAXI</div>
+  <div class="hud-item"><span class="hud-label">Speed</span><span id="speed-value">0</span></div>
+  <div class="hud-item"><span class="hud-label">Altitude</span><span id="altitude-value">0</span></div>
+  <div class="hud-item"><span class="hud-label">Throttle</span><span id="throttle-value">0%</span></div>
+  <div class="hud-item"><span class="hud-label">Checkpoint</span><span id="checkpoint-value">0/0</span></div>
+  <div class="hud-item"><span class="hud-label">Laps</span><span id="laps-value">0</span></div>
+</div>
+
+<!-- Hangar Interaction Prompt -->
+<div id="hangar-prompt" style="display: none;">Press E to open Hangar</div>
+
+<!-- Hangar Selection Overlay -->
+<div id="hangar-overlay" style="display: none;">
+  <div id="hangar-panel">
+    <div id="hangar-header">
+      <h2 id="hangar-title">Hangar</h2>
+      <button id="hangar-close">X</button>
+    </div>
+    <div id="plane-list"></div>
+  </div>
+</div>
 
 <div class="mobile-controls">
   <a id="mobile-interact-button" class="mobile-button">
@@ -98,5 +245,203 @@ and also configure additional buttons for mobile compatibility.
     transform: scale(0.92);
     background-color: rgba(0, 0, 0, 0.75);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-  }  
+  }
+
+  /* ========== Flight HUD ========== */
+  #flight-hud {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 15px;
+    border-radius: 8px;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    color: white;
+    font-size: 14px;
+    min-width: 140px;
+  }
+
+  #mode-indicator {
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 6px 12px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  #mode-indicator.taxi {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #451a03;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  }
+
+  #mode-indicator.flight {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #022c22;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  }
+
+  .hud-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .hud-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .hud-label {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  /* ========== Hangar Prompt ========== */
+  #hangar-prompt {
+    position: fixed;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: #00FF00;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    border: 2px solid #00FF00;
+    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+  }
+
+  /* ========== Hangar Overlay ========== */
+  #hangar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  #hangar-panel {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 12px;
+    padding: 24px;
+    min-width: 400px;
+    max-width: 90%;
+    max-height: 80%;
+    overflow-y: auto;
+    border: 2px solid #0f3460;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  #hangar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #0f3460;
+    padding-bottom: 12px;
+  }
+
+  #hangar-title {
+    margin: 0;
+    color: #e94560;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-size: 24px;
+  }
+
+  #hangar-close {
+    background: #e94560;
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+  }
+
+  #hangar-close:hover {
+    background: #ff6b6b;
+  }
+
+  /* ========== Plane Items ========== */
+  .plane-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid #0f3460;
+    transition: all 0.2s;
+  }
+
+  .plane-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #e94560;
+  }
+
+  .plane-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 4px;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+  }
+
+  .plane-class {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+
+  .plane-class.rookie {
+    background: #4ade80;
+    color: #052e16;
+  }
+
+  .plane-class.pro {
+    background: #60a5fa;
+    color: #1e3a5f;
+  }
+
+  .plane-class.legendary {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: #451a03;
+  }
+
+  .plane-stats {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 12px;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+  }
+
+  .select-plane-btn {
+    background: #e94560;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    transition: all 0.2s;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+  }
+
+  .select-plane-btn:hover {
+    background: #ff6b6b;
+    transform: scale(1.05);
+  }
 </style>

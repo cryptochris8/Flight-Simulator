@@ -1,0 +1,65 @@
+{
+  "name": "Skyport Alpha",
+  "elevation": 180,
+  "runway": {
+    "start": {
+      "x": 0,
+      "y": 180,
+      "z": 100
+    },
+    "end": {
+      "x": 0,
+      "y": 180,
+      "z": -250
+    },
+    "width": 20
+  },
+  "spawn": {
+    "position": {
+      "x": 0,
+      "y": 180,
+      "z": 80
+    },
+    "yawDegrees": 180
+  },
+  "hangarDistrict": {
+    "slots": [
+      {
+        "id": "hangar_A1",
+        "position": {
+          "x": -50,
+          "y": 180,
+          "z": 60
+        },
+        "yawDegrees": 90
+      },
+      {
+        "id": "hangar_A2",
+        "position": {
+          "x": -70,
+          "y": 180,
+          "z": 40
+        },
+        "yawDegrees": 90
+      },
+      {
+        "id": "hangar_B1",
+        "position": {
+          "x": 50,
+          "y": 180,
+          "z": 60
+        },
+        "yawDegrees": 270
+      },
+      {
+        "id": "hangar_B2",
+        "position": {
+          "x": 70,
+          "y": 180,
+          "z": 40
+        },
+        "yawDegrees": 270
+      }
+    ]
+  }
+}

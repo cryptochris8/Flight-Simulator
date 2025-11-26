@@ -1,0 +1,252 @@
+{
+  "lobbySystem": {
+    "name": "CoreLobbySystem",
+    "version": "1.0.0",
+    "engine": "generic",
+    "description": "Lobby flow where players choose Solo, Public Multiplayer, or Friends/Private session before entering the main game."
+  },
+  "modes": [
+    {
+      "id": "SOLO",
+      "displayName": "Solo",
+      "description": "Start a game session alone in a dedicated server instance.",
+      "maxPlayers": 1,
+      "isPrivate": true,
+      "matchmakingQueueId": "solo_queue",
+      "teleportStrategy": "reserved_server_single"
+    },
+    {
+      "id": "PUBLIC_MATCHMAKING",
+      "displayName": "Multiplayer (Public)",
+      "description": "Join a public match with random players up to the max player limit.",
+      "maxPlayers": 8,
+      "isPrivate": false,
+      "matchmakingQueueId": "public_queue_default",
+      "teleportStrategy": "reserved_server_matchmaking"
+    },
+    {
+      "id": "FRIENDS_ONLY",
+      "displayName": "Play With Friends",
+      "description": "Create or join a party with friends, then start a private match together.",
+      "maxPlayers": 8,
+      "isPrivate": true,
+      "matchmakingQueueId": "friends_queue",
+      "teleportStrategy": "party_reserved_server"
+    }
+  ],
+  "uiScreens": [
+    {
+      "id": "MAIN_LOBBY",
+      "title": "Game Lobby",
+      "description": "Default screen shown when a player joins the experience.",
+      "widgets": [
+        {
+          "type": "panel",
+          "id": "modeSelectPanel",
+          "title": "Choose Game Mode",
+          "layout": "vertical_buttons"
+        },
+        {
+          "type": "button",
+          "id": "soloButton",
+          "label": "Solo",
+          "modeId": "SOLO",
+          "action": "open_screen:CONFIRM_SOLO"
+        },
+        {
+          "type": "button",
+          "id": "publicButton",
+          "label": "Multiplayer (Public)",
+          "modeId": "PUBLIC_MATCHMAKING",
+          "action": "open_screen:QUEUE_PUBLIC"
+        },
+        {
+          "type": "button",
+          "id": "friendsButton",
+          "label": "Play With Friends",
+          "modeId": "FRIENDS_ONLY",
+          "action": "open_screen:PARTY_MENU"
+        },
+        {
+          "type": "button",
+          "id": "settingsButton",
+          "label": "Settings",
+          "action": "open_screen:SETTINGS"
+        }
+      ]
+    },
+    {
+      "id": "CONFIRM_SOLO",
+      "title": "Start Solo Run?",
+      "widgets": [
+        {
+          "type": "label",
+          "id": "soloInfo",
+          "text": "You'll enter a private server by yourself. Friends can\u2019t join mid-run."
+        },
+        {
+          "type": "button",
+          "id": "soloConfirmButton",
+          "label": "Start Solo",
+          "action": "start_mode:SOLO"
+        },
+        {
+          "type": "button",
+          "id": "soloBackButton",
+          "label": "Back",
+          "action": "open_screen:MAIN_LOBBY"
+        }
+      ]
+    },
+    {
+      "id": "QUEUE_PUBLIC",
+      "title": "Public Matchmaking",
+      "widgets": [
+        {
+          "type": "label",
+          "id": "queueStatusLabel",
+          "text": "Searching for players..."
+        },
+        {
+          "type": "button",
+          "id": "cancelQueueButton",
+          "label": "Cancel",
+          "action": "cancel_matchmaking:PUBLIC_MATCHMAKING"
+        }
+      ]
+    },
+    {
+      "id": "PARTY_MENU",
+      "title": "Friends / Party",
+      "widgets": [
+        {
+          "type": "label",
+          "id": "partyInfo",
+          "text": "Create a party, invite friends, or join a friend\u2019s party."
+        },
+        {
+          "type": "button",
+          "id": "createPartyButton",
+          "label": "Create Party",
+          "action": "party:create"
+        },
+        {
+          "type": "button",
+          "id": "joinByCodeButton",
+          "label": "Join Party by Code",
+          "action": "open_screen:JOIN_BY_CODE"
+        },
+        {
+          "type": "button",
+          "id": "startPartyMatchButton",
+          "label": "Start Match",
+          "action": "start_mode:FRIENDS_ONLY",
+          "requiresPartyOwner": true
+        },
+        {
+          "type": "button",
+          "id": "partyBackButton",
+          "label": "Back",
+          "action": "open_screen:MAIN_LOBBY"
+        }
+      ]
+    },
+    {
+      "id": "JOIN_BY_CODE",
+      "title": "Join Party by Code",
+      "widgets": [
+        {
+          "type": "textbox",
+          "id": "partyCodeInput",
+          "placeholder": "Enter party code"
+        },
+        {
+          "type": "button",
+          "id": "submitPartyCodeButton",
+          "label": "Join",
+          "action": "party:join_by_code"
+        },
+        {
+          "type": "button",
+          "id": "codeBackButton",
+          "label": "Back",
+          "action": "open_screen:PARTY_MENU"
+        }
+      ]
+    },
+    {
+      "id": "SETTINGS",
+      "title": "Settings",
+      "widgets": [
+        {
+          "type": "toggle",
+          "id": "togglePrivacy",
+          "label": "Allow friends to join my session",
+          "binding": "playerSettings.allowFriendJoin"
+        },
+        {
+          "type": "button",
+          "id": "settingsBackButton",
+          "label": "Back",
+          "action": "open_screen:MAIN_LOBBY"
+        }
+      ]
+    }
+  ],
+  "partySystem": {
+    "maxPartySize": 8,
+    "inviteMethods": [
+      "friends_list",
+      "party_code"
+    ],
+    "allowCrossServerInvites": true,
+    "autoDisbandOnLeave": true
+  },
+  "matchmaking": {
+    "queues": [
+      {
+        "id": "solo_queue",
+        "maxPlayers": 1,
+        "minPlayersToStart": 1,
+        "fillMethod": "instant"
+      },
+      {
+        "id": "public_queue_default",
+        "maxPlayers": 8,
+        "minPlayersToStart": 2,
+        "fillMethod": "balanced",
+        "fillTimeoutSeconds": 30
+      },
+      {
+        "id": "friends_queue",
+        "maxPlayers": 8,
+        "minPlayersToStart": 1,
+        "fillMethod": "party_locked"
+      }
+    ]
+  },
+  "teleporting": {
+    "gameplayPlaceId": "REPLACE_WITH_GAME_PLACE_ID",
+    "useReservedServers": true,
+    "callbacks": {
+      "onMatchFound": "Teleport players to reserved server with appropriate mode metadata.",
+      "onMatchEnded": "Teleport players back to lobby place."
+    }
+  },
+  "networkEvents": {
+    "fromClient": [
+      "RequestStartMode(modeId)",
+      "RequestJoinQueue(queueId)",
+      "RequestCancelQueue(queueId)",
+      "RequestCreateParty()",
+      "RequestJoinPartyByCode(code)",
+      "RequestStartPartyMatch()"
+    ],
+    "fromServer": [
+      "LobbyStateUpdate(payload)",
+      "MatchmakingStatusUpdate(queueId, status)",
+      "PartyStateUpdate(partyData)",
+      "TeleportToMatch(modeId, serverInfo)"
+    ]
+  }
+}

@@ -17,17 +17,26 @@ export interface AirplaneOptions {
   modelUri?: string;
   modelScale?: number;
   spawnPosition?: Vector3Like;
+  spawnYawDegrees?: number;  // Initial facing direction
+  groundLevel?: number;       // Ground elevation for taxi mode
+  startInAir?: boolean;       // If false, start grounded in hangar
 }
 
 const DEFAULT_OPTIONS: Required<AirplaneOptions> = {
   modelUri: 'models/low-poly/scene.gltf',
   modelScale: 0.3,  // Smaller scale for better visibility
   spawnPosition: { x: 0, y: 100, z: 0 },
+  spawnYawDegrees: 0,
+  groundLevel: 180,
+  startInAir: false,  // Start grounded by default
 };
 
 /**
  * Creates and manages a player-controlled airplane in HYTOPIA.
  * Uses a separate Entity for the plane and attaches the player's camera to it.
+ *
+ * IMPORTANT: Position comes from entity.position (physics engine handles it).
+ * We only set velocity on the entity, and the physics engine moves it.
  */
 export class HytopiaAirplane {
   private entity: Entity | null = null;
@@ -63,9 +72,25 @@ export class HytopiaAirplane {
     this.player = player;
     const spawnPos = position || this.options.spawnPosition;
 
-    // Initialize physics at spawn position
-    this.physics.state.position = { ...spawnPos };
-    this.physics.state.velocity = { x: 0, y: 0, z: 30 }; // Start with forward velocity
+    // Set ground level for taxi mode
+    this.physics.setGroundLevel(this.options.groundLevel);
+
+    // Convert spawn yaw from degrees to radians
+    const yawRad = (this.options.spawnYawDegrees * Math.PI) / 180;
+    this.physics.state.yaw = yawRad;
+
+    if (this.options.startInAir) {
+      // Start airborne with forward velocity (in the direction we're facing)
+      const fwdX = -Math.sin(yawRad);
+      const fwdZ = -Math.cos(yawRad);
+      this.physics.state.velocity = { x: fwdX * 30, y: 0, z: fwdZ * 30 };
+      this.physics.state.isGrounded = false;
+    } else {
+      // Start grounded with zero velocity (in hangar)
+      this.physics.state.velocity = { x: 0, y: 0, z: 0 };
+      this.physics.state.isGrounded = true;
+      this.physics.state.throttle = 0;
+    }
 
     // Create the airplane entity (separate from player)
     this.entity = new Entity({
@@ -83,7 +108,7 @@ export class HytopiaAirplane {
       },
     });
 
-    // Spawn the airplane entity
+    // Spawn the airplane entity at the spawn position
     this.entity.spawn(world, spawnPos);
 
     // Setup camera to follow the airplane
@@ -93,6 +118,8 @@ export class HytopiaAirplane {
     this.entity.on(EntityEvent.TICK, ({ entity, tickDeltaMs }) => {
       this.update(tickDeltaMs);
     });
+
+    console.log(`[Airplane] Spawned at (${spawnPos.x}, ${spawnPos.y}, ${spawnPos.z}), yaw: ${this.options.spawnYawDegrees}deg`);
 
     return this.entity;
   }
@@ -124,7 +151,8 @@ export class HytopiaAirplane {
   private updateCamera(): void {
     if (!this.entity || !this.player) return;
 
-    const pos = this.physics.state.position;
+    // Get actual position from the entity (physics engine handles position)
+    const pos = this.entity.position;
 
     // Position camera behind and above the plane using setAttachedToPosition
     // This sets the camera at a fixed world position each tick
@@ -143,13 +171,16 @@ export class HytopiaAirplane {
 
     const dt = deltaTimeMs / 1000;
 
+    // Get actual position from entity (physics engine handles position via velocity)
+    const entityPos = this.entity.position;
+
     // Read player input
     this.processInput();
 
-    // Update physics
-    this.physics.update(this.controlInput, dt);
+    // Update physics - pass entity Y for ground detection
+    this.physics.update(this.controlInput, dt, entityPos.y);
 
-    // Apply to entity
+    // Apply velocity to entity (position is handled by physics engine)
     this.applyPhysicsToEntity();
 
     // Update camera position
@@ -158,10 +189,10 @@ export class HytopiaAirplane {
     // Debug logging every 100 ticks
     this.tickCount++;
     if (this.tickCount % 100 === 0) {
-      const pos = this.physics.state.position;
       const vel = this.physics.state.velocity;
       const speed = Math.hypot(vel.x, vel.y, vel.z);
-      console.log(`[Airplane] Pos: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}) | Speed: ${speed.toFixed(1)} | Throttle: ${(this.physics.state.throttle * 100).toFixed(0)}%`);
+      const mode = this.physics.state.isGrounded ? 'TAXI' : 'FLIGHT';
+      console.log(`[Airplane] Pos: (${entityPos.x.toFixed(1)}, ${entityPos.y.toFixed(1)}, ${entityPos.z.toFixed(1)}) | Speed: ${speed.toFixed(1)} | Throttle: ${(this.physics.state.throttle * 100).toFixed(0)}% | Mode: ${mode}`);
     }
 
     // Reset frame input
@@ -242,18 +273,25 @@ export class HytopiaAirplane {
    */
   getFlightData(): { speed: number; altitude: number; throttle: number } {
     const v = this.physics.state.velocity;
+    // Get altitude from entity position (physics engine handles position)
+    const altitude = this.entity ? this.entity.position.y : 0;
     return {
       speed: Math.hypot(v.x, v.y, v.z),
-      altitude: this.physics.state.position.y,
+      altitude: altitude,
       throttle: this.physics.state.throttle,
     };
   }
 
   /**
-   * Get the flight physics state
+   * Get the flight physics state with position from entity
    */
   get flightState() {
-    return this.physics.state;
+    // Return physics state augmented with position from entity
+    const pos = this.entity ? this.entity.position : { x: 0, y: 0, z: 0 };
+    return {
+      ...this.physics.state,
+      position: pos,
+    };
   }
 
   /**
