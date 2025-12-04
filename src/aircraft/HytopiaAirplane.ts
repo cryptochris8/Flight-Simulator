@@ -10,7 +10,8 @@ import {
   EntityEvent,
 } from 'hytopia';
 
-import { FlightPhysics, ControlInput } from './FlightPhysics';
+import { createFlightPhysicsAdapter, IFlightPhysicsAdapter, UnifiedControlInput } from './FlightPhysicsAdapter';
+import { FLIGHT_MODE } from './FlightConfig';
 import { clamp } from '../util/clamp';
 
 export interface AirplaneOptions {
@@ -37,14 +38,19 @@ const DEFAULT_OPTIONS: Required<AirplaneOptions> = {
  *
  * IMPORTANT: Position comes from entity.position (physics engine handles it).
  * We only set velocity on the entity, and the physics engine moves it.
+ *
+ * Physics mode is controlled by FLIGHT_MODE in FlightConfig.ts:
+ * - "arcade"   : Simple, responsive controls. Always airborne.
+ * - "hybrid"   : Semi-realistic lift/drag but simplified controls.
+ * - "realistic": Full taxi + takeoff physics.
  */
 export class HytopiaAirplane {
   private entity: Entity | null = null;
   private player: Player | null = null;
   private world: World | null = null;
-  private physics: FlightPhysics;
+  private physics: IFlightPhysicsAdapter;
   private options: Required<AirplaneOptions>;
-  private controlInput: ControlInput;
+  private controlInput: UnifiedControlInput;
 
   // Input state
   private lastPitch = 0;
@@ -53,7 +59,7 @@ export class HytopiaAirplane {
 
   constructor(options?: AirplaneOptions) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
-    this.physics = new FlightPhysics();
+    this.physics = createFlightPhysicsAdapter();
     this.controlInput = {
       pitch: 0,
       roll: 0,
@@ -72,24 +78,36 @@ export class HytopiaAirplane {
     this.player = player;
     const spawnPos = position || this.options.spawnPosition;
 
-    // Set ground level for taxi mode
-    this.physics.setGroundLevel(this.options.groundLevel);
+    // Set ground level for realistic mode (other modes ignore this)
+    if (this.physics.setGroundLevel) {
+      this.physics.setGroundLevel(this.options.groundLevel);
+    }
 
     // Convert spawn yaw from degrees to radians
     const yawRad = (this.options.spawnYawDegrees * Math.PI) / 180;
-    this.physics.state.yaw = yawRad;
 
-    if (this.options.startInAir) {
+    // Initialize physics state based on mode
+    const state = this.physics.state;
+    state.yaw = yawRad;
+
+    // For arcade/hybrid modes, set initial position if they track it
+    if (this.physics.tracksPosition && state.position) {
+      state.position.x = spawnPos.x;
+      state.position.y = spawnPos.y;
+      state.position.z = spawnPos.z;
+    }
+
+    if (this.options.startInAir || FLIGHT_MODE !== "realistic") {
       // Start airborne with forward velocity (in the direction we're facing)
       const fwdX = -Math.sin(yawRad);
       const fwdZ = -Math.cos(yawRad);
-      this.physics.state.velocity = { x: fwdX * 30, y: 0, z: fwdZ * 30 };
-      this.physics.state.isGrounded = false;
+      state.velocity = { x: fwdX * 30, y: 0, z: fwdZ * 30 };
+      state.isGrounded = false;
     } else {
-      // Start grounded with zero velocity (in hangar)
-      this.physics.state.velocity = { x: 0, y: 0, z: 0 };
-      this.physics.state.isGrounded = true;
-      this.physics.state.throttle = 0;
+      // Start grounded with zero velocity (in hangar) - realistic mode only
+      state.velocity = { x: 0, y: 0, z: 0 };
+      state.isGrounded = true;
+      state.throttle = 0;
     }
 
     // Create the airplane entity (separate from player)

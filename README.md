@@ -1,20 +1,51 @@
-# Hytopia Airplane Starter (vibe‑jet inspired)
+# Hytopia Flight Variants Add-on
 
-Portable flight math + wiring to build an arcade‑style airplane game in **Hytopia**.
+This add-on gives you **two alternate flight models** you can plug into your
+existing airplane game:
 
-## Quick start
+- `src/aircraft/ArcadeFlightPhysics.ts`
+  - Very forgiving, arcade-style controls:
+    - Auto-levels roll
+    - Simple speed model
+    - Mild gravity
+    - Great for casual players and tight ring circuits
 
-```bash
-npm install
-npm run build
-npm run dev
-```
+- `src/aircraft/HybridFlightPhysics.ts`
+  - A slightly more realistic, hybrid model:
+    - Mass, thrust, drag, lift, gravity
+    - Simple stall behavior at low speed
+    - Still arcade-friendly but with more "airplane" feel
 
-In your **Hytopia project**, copy the `src/aircraft`, `src/gameplay`, and `src/engine` folders (plus `src/util`) and wire `AirplaneEntityAdapter` to your actual Hytopia SDK calls:
+## How Claude can use these
 
-- Spawn the GLTF/voxel model for the plane.
-- Update its transform each tick based on physics state.
-- Apply the camera position/target each frame.
-- Route input events into `AirplaneController`.
+Right now your project likely uses a `FlightPhysics` class in `src/aircraft/FlightPhysics.ts`.
 
-This repo is meant as a **starter kit** for Claude Code / HYTOPIA integration, not a full game by itself.
+Claude can:
+
+1. Swap imports in your `AirplaneEntityAdapter`:
+   - From:
+     ```ts
+     import { FlightPhysics } from "./FlightPhysics";
+     ```
+   - To one of:
+     ```ts
+     import { ArcadeFlightPhysics } from "./ArcadeFlightPhysics";
+     // or
+     import { HybridFlightPhysics } from "./HybridFlightPhysics";
+     ```
+
+2. Update the adapter field accordingly:
+   ```ts
+   // For arcade:
+   physics = new ArcadeFlightPhysics();
+
+   // For hybrid:
+   physics = new HybridFlightPhysics();
+   ```
+
+3. Optionally expose a "difficulty" or "flightMode" toggle in your settings UI that
+   chooses which class to instantiate for each player.
+
+This add-on is intentionally standalone: it doesn't change your existing files,
+it just provides **drop-in alternatives** so you and Claude can pick the feel
+that best fits your Hytopia airplane time-trial game.
