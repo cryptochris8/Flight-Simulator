@@ -1,272 +1,111 @@
-<!--
-This is a basic boilerplate example of how to implement simple game UI,
-and also configure additional buttons for mobile compatibility.
--->
-
-<script>
-  // Handle interact button touch / untouch
-  const mobileInteractButton = document.getElementById('mobile-interact-button');
-  mobileInteractButton.addEventListener('touchstart', e => {
-    e.preventDefault(); // Prevents mobile highlight/select/copy popup behaviors
-    mobileInteractButton.classList.add('active'); // more immediate feedback to add/remove active class
-    hytopia.pressInput('ml', true);
-  });
-
-  mobileInteractButton.addEventListener('touchend', e => {
-    e.preventDefault();
-    mobileInteractButton.classList.remove('active');
-    hytopia.pressInput('ml', false);
-  });
-
-  // Handle jump button touch / untouch
-  const mobileJumpButton = document.getElementById('mobile-jump-button');
-  mobileJumpButton.addEventListener('touchstart', e => {
-    e.preventDefault();
-    mobileJumpButton.classList.add('active');
-    hytopia.pressInput(' ', true);
-  });
-
-  mobileJumpButton.addEventListener('touchend', e => {
-    e.preventDefault();
-    mobileJumpButton.classList.remove('active');
-    hytopia.pressInput(' ', false);
-  });
-
-  // ========== Hangar UI State ==========
-  let currentHangarId = null;
-  let hangarPlanes = [];
-
-  // ========== Hangar UI Functions ==========
-  function showHangarUI(hangarId, planes) {
-    const overlay = document.getElementById('hangar-overlay');
-    const title = document.getElementById('hangar-title');
-    const list = document.getElementById('plane-list');
-
-    title.textContent = `Hangar ${hangarId.replace('hangar_', '')}`;
-    list.innerHTML = '';
-
-    planes.forEach(plane => {
-      const item = document.createElement('div');
-      item.className = 'plane-item';
-
-      const nameDiv = document.createElement('div');
-      nameDiv.className = 'plane-name';
-      nameDiv.textContent = plane.name;
-
-      const classDiv = document.createElement('div');
-      classDiv.className = 'plane-class ' + plane.class;
-      classDiv.textContent = plane.class.toUpperCase();
-
-      const statsDiv = document.createElement('div');
-      statsDiv.className = 'plane-stats';
-      if (plane.stats) {
-        statsDiv.textContent = 'Speed: ' + plane.stats.maxSpeed + ' | Handling: ' + plane.stats.handling + ' | Accel: ' + plane.stats.acceleration;
-      }
-
-      const selectBtn = document.createElement('button');
-      selectBtn.className = 'select-plane-btn';
-      selectBtn.textContent = 'Select';
-      selectBtn.setAttribute('data-plane-id', plane.id);
-
-      item.appendChild(nameDiv);
-      item.appendChild(classDiv);
-      item.appendChild(statsDiv);
-      item.appendChild(selectBtn);
-      list.appendChild(item);
-    });
-
-    overlay.style.display = 'flex';
-  }
-
-  function closeHangarUI() {
-    document.getElementById('hangar-overlay').style.display = 'none';
-    currentHangarId = null;
-    hangarPlanes = [];
-  }
-
-  function selectPlane(planeId) {
-    if (!currentHangarId) return;
-    hytopia.sendData({
-      type: 'PLANE_SELECTION_CONFIRMED',
-      hangarId: currentHangarId,
-      planeId: planeId
-    });
-    closeHangarUI();
-  }
-
-  // ========== Event Delegation for Hangar UI ==========
-  // Use event delegation to handle clicks on dynamically created buttons
-  document.addEventListener('click', function(e) {
-    // Handle close button
-    if (e.target && e.target.id === 'hangar-close') {
-      closeHangarUI();
-    }
-    // Handle select plane buttons
-    if (e.target && e.target.classList.contains('select-plane-btn')) {
-      const planeId = e.target.getAttribute('data-plane-id');
-      if (planeId) {
-        selectPlane(planeId);
-      }
-    }
-  });
-
-  // ========== Flight HUD Update ==========
-  hytopia.onData(function(data) {
-    // Flight data update
-    if (data.type === 'flight-update') {
-      document.getElementById('speed-value').textContent = data.speed;
-      document.getElementById('altitude-value').textContent = data.altitude;
-      document.getElementById('throttle-value').textContent = data.throttle + '%';
-      document.getElementById('checkpoint-value').textContent = data.checkpoint + '/' + data.totalCheckpoints;
-      document.getElementById('laps-value').textContent = data.laps;
-
-      // Update mode indicator
-      var modeEl = document.getElementById('mode-indicator');
-      modeEl.textContent = data.mode;
-      modeEl.className = data.isGrounded ? 'taxi' : 'flight';
-    }
-
-    // Hangar prompt update
-    if (data.type === 'hangar-prompt') {
-      var promptEl = document.getElementById('hangar-prompt');
-      if (data.show) {
-        promptEl.textContent = data.text;
-        promptEl.style.display = 'block';
-      } else {
-        promptEl.style.display = 'none';
-      }
-    }
-
-    // Hangar contents received from server
-    if (data.type === 'HANGAR_CONTENTS') {
-      currentHangarId = data.hangarId;
-      hangarPlanes = data.planes;
-      showHangarUI(data.hangarId, data.planes);
-    }
-
-    // Plane spawned - close hangar UI
-    if (data.type === 'PLANE_SPAWNED') {
-      closeHangarUI();
-    }
-
-    // Hangar error
-    if (data.type === 'HANGAR_ERROR') {
-      alert('Hangar Error: ' + data.error);
-    }
-  });
-</script>
-
-<!--
-  HYTOPIA allows you to build completely custom UI using HTML, CSS and Javascript.
-  You can build simple UIs, to highly complex ones. UI capabilities are as powerful
-  as building a regular web page - there are close to no limitations on what is possible.
-
-  Remember, HYTOPIA sandboxes your UI & UI scripts, so external network requests or
-  other unsafe actions likely won't work as you expect in production.
--->
-
-<!-- Flight HUD -->
-<div id="flight-hud">
-  <div id="mode-indicator" class="taxi">TAXI</div>
-  <div class="hud-item"><span class="hud-label">Speed</span><span id="speed-value">0</span></div>
-  <div class="hud-item"><span class="hud-label">Altitude</span><span id="altitude-value">0</span></div>
-  <div class="hud-item"><span class="hud-label">Throttle</span><span id="throttle-value">0%</span></div>
-  <div class="hud-item"><span class="hud-label">Checkpoint</span><span id="checkpoint-value">0/0</span></div>
-  <div class="hud-item"><span class="hud-label">Laps</span><span id="laps-value">0</span></div>
-</div>
-
-<!-- Hangar Interaction Prompt -->
-<div id="hangar-prompt" style="display: none;">Press E to open Hangar</div>
-
-<!-- Hangar Selection Overlay -->
-<div id="hangar-overlay" style="display: none;">
-  <div id="hangar-panel">
-    <div id="hangar-header">
-      <h2 id="hangar-title">Hangar</h2>
-      <button id="hangar-close">X</button>
-    </div>
-    <div id="plane-list"></div>
-  </div>
-</div>
-
-<div class="mobile-controls">
-  <a id="mobile-interact-button" class="mobile-button">
-    <img src="{{CDN_ASSETS_URL}}/icons/target.png" />
-  </a>
-
-  <a id="mobile-jump-button" class="mobile-button">
-    <img src="{{CDN_ASSETS_URL}}/icons/jump.png" />
-  </a>
-</div>
+<!-- HYTOPIA Flight Simulator - UI -->
+<!-- NOTE: NO <html>, <body>, or <head> tags! This content is injected into the game client -->
 
 <style>
-  /* By default, we hide the mobile controls */
-  .mobile-controls {
-    display: none;
+  /* ===== GLOBAL RESET ===== */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
 
-  /*
-    We can use the body.mobile class to detect if we're on a mobile device.
-    The HYTOPIA game client will always add this class to the body element when running on a mobile device.
-  */
-  body.mobile .mobile-controls { /* If this css selector matches because we're on mobile, show the mobile controls */
-    display: flex;
-    gap: 14px;
-    position: fixed;
-    bottom: 40px;
-    right: 40px;
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    color: #fff;
+    overflow: hidden;
   }
 
-  /* You can configure and style your buttons however you'd like. This is a minimalistic starting point. */
-  .mobile-button {
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 50%;
-    align-items: center;
-    justify-content: center;
-    display: flex;
-    width: 50px;
-    height: 50px;
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform, background-color;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    font-weight: bold;
-    color: rgba(255, 255, 255, 0.8);
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  }
-  
-  .mobile-button img {
-    width: 22px;
-    height: 22px;
+  /* ===== UTILITY CLASSES ===== */
+  .hidden {
+    display: none !important;
   }
 
-  .mobile-button.active {
-    transform: scale(0.92);
-    background-color: rgba(0, 0, 0, 0.75);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  .pointer-events {
+    pointer-events: auto;
   }
 
-  /* ========== Flight HUD ========== */
+  /* ===== FLIGHT HUD (Top Left) ===== */
   #flight-hud {
     position: fixed;
     top: 20px;
     left: 20px;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 15px;
-    border-radius: 8px;
-    font-family: 'Inter', 'Segoe UI', sans-serif;
-    color: white;
-    font-size: 14px;
-    min-width: 140px;
+    z-index: 10;
+    pointer-events: none;
   }
 
+  .stat-bar {
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.85), rgba(20, 20, 20, 0.85));
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    min-width: 220px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: #bbb;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .stat-value {
+    font-size: 13px;
+    color: #fff;
+    font-weight: bold;
+  }
+
+  .bar-container {
+    width: 100%;
+    height: 22px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent);
+  }
+
+  .throttle-bar {
+    background: linear-gradient(90deg, #f57c00, #ffb74d);
+    box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.2);
+  }
+
+  /* ===== MODE INDICATOR ===== */
   #mode-indicator {
     text-align: center;
     font-size: 16px;
     font-weight: bold;
-    padding: 6px 12px;
-    border-radius: 4px;
+    padding: 8px 16px;
+    border-radius: 6px;
     margin-bottom: 12px;
     text-transform: uppercase;
     letter-spacing: 2px;
@@ -275,173 +114,801 @@ and also configure additional buttons for mobile compatibility.
   #mode-indicator.taxi {
     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
     color: #451a03;
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
   }
 
   #mode-indicator.flight {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: #022c22;
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
   }
 
-  .hud-item {
+  #mode-indicator.on-foot {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: #f5f3ff;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+  }
+
+  /* ===== FLIGHT INFO GRID ===== */
+  .flight-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .info-box {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+  }
+
+  .info-box.wide {
+    grid-column: span 2;
+  }
+
+  .info-label {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .info-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+  }
+
+  .info-value.speed {
+    color: #4ade80;
+  }
+
+  .info-value.altitude {
+    color: #60a5fa;
+  }
+
+  /* ===== CONTROLS HELP (Bottom Left) ===== */
+  #controls-help {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.75), rgba(20, 20, 20, 0.75));
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 11px;
+    color: #aaa;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .control-row {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
+    align-items: center;
+    margin-bottom: 4px;
   }
 
-  .hud-item:last-child {
+  .control-row:last-child {
     margin-bottom: 0;
   }
 
-  .hud-label {
-    color: rgba(255, 255, 255, 0.7);
+  .control-key {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: bold;
+    color: #fff;
+    margin-right: 8px;
+    min-width: 45px;
+    text-align: center;
   }
 
-  /* ========== Hangar Prompt ========== */
+  /* ===== CHECKPOINT TRACKER (Top Right) ===== */
+  #checkpoint-tracker {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.85), rgba(20, 20, 20, 0.85));
+    padding: 12px 18px;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    z-index: 10;
+    pointer-events: none;
+    text-align: center;
+  }
+
+  .checkpoint-title {
+    font-size: 10px;
+    color: #ffd700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .checkpoint-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+  }
+
+  .checkpoint-laps {
+    font-size: 12px;
+    color: #aaa;
+    margin-top: 4px;
+  }
+
+  /* ===== SELECT PLANE PROMPT (Center Screen) ===== */
+  #select-plane-prompt {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 40, 0.9));
+    padding: 30px 50px;
+    border-radius: 16px;
+    text-align: center;
+    border: 3px solid #60a5fa;
+    box-shadow: 0 10px 50px rgba(96, 165, 250, 0.3);
+    z-index: 100;
+    pointer-events: none;
+    animation: selectPlanePulse 2s ease-in-out infinite;
+  }
+
+  #select-plane-prompt .prompt-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    animation: planeFloat 3s ease-in-out infinite;
+  }
+
+  #select-plane-prompt .prompt-text {
+    font-size: 18px;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  #select-plane-prompt .key {
+    display: inline-block;
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    margin: 0 4px;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+  }
+
+  @keyframes selectPlanePulse {
+    0%, 100% { box-shadow: 0 10px 50px rgba(96, 165, 250, 0.3); }
+    50% { box-shadow: 0 10px 60px rgba(96, 165, 250, 0.5); }
+  }
+
+  @keyframes planeFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  /* ===== HANGAR PROMPT (Bottom Center) ===== */
   #hangar-prompt {
     position: fixed;
     bottom: 120px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
-    color: #00FF00;
-    padding: 12px 24px;
+    background: rgba(0, 0, 0, 0.85);
+    color: #4ade80;
+    padding: 14px 28px;
     border-radius: 8px;
-    font-family: 'Inter', 'Segoe UI', sans-serif;
     font-size: 16px;
     font-weight: bold;
-    border: 2px solid #00FF00;
-    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    border: 2px solid #4ade80;
+    text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+    z-index: 100;
+    pointer-events: none;
+    animation: promptPulse 1.5s ease-in-out infinite;
   }
 
-  /* ========== Hangar Overlay ========== */
+  @keyframes promptPulse {
+    0%, 100% { opacity: 0.9; transform: translateX(-50%) scale(1); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.02); }
+  }
+
+  /* ===== HANGAR OVERLAY ===== */
   #hangar-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    backdrop-filter: blur(4px);
+    pointer-events: auto;
   }
 
   #hangar-panel {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border-radius: 12px;
-    padding: 24px;
-    min-width: 400px;
+    border-radius: 16px;
+    padding: 28px;
+    min-width: 450px;
     max-width: 90%;
     max-height: 80%;
     overflow-y: auto;
-    border: 2px solid #0f3460;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    border: 3px solid #0f3460;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6);
   }
 
   #hangar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #0f3460;
-    padding-bottom: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #0f3460;
   }
 
   #hangar-title {
     margin: 0;
-    color: #e94560;
-    font-family: 'Inter', 'Segoe UI', sans-serif;
-    font-size: 24px;
+    color: #60a5fa;
+    font-size: 26px;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(96, 165, 250, 0.3);
   }
 
   #hangar-close {
-    background: #e94560;
+    background: rgba(239, 68, 68, 0.8);
     color: white;
     border: none;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     cursor: pointer;
     font-weight: bold;
-    font-size: 16px;
-  }
-
-  #hangar-close:hover {
-    background: #ff6b6b;
-  }
-
-  /* ========== Plane Items ========== */
-  .plane-item {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 12px;
-    border: 1px solid #0f3460;
+    font-size: 18px;
     transition: all 0.2s;
   }
 
+  #hangar-close:hover {
+    background: #ef4444;
+    transform: scale(1.1);
+  }
+
+  /* ===== PLANE ITEMS ===== */
+  .plane-item {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.25s;
+  }
+
   .plane-item:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: #e94560;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #60a5fa;
+    transform: translateX(4px);
   }
 
   .plane-name {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: bold;
     color: white;
-    margin-bottom: 4px;
-    font-family: 'Inter', 'Segoe UI', sans-serif;
+    margin-bottom: 6px;
   }
 
   .plane-class {
     display: inline-block;
-    padding: 2px 8px;
+    padding: 3px 10px;
     border-radius: 4px;
     font-size: 11px;
     font-weight: bold;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 
   .plane-class.rookie {
-    background: #4ade80;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
     color: #052e16;
   }
 
   .plane-class.pro {
-    background: #60a5fa;
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
     color: #1e3a5f;
   }
 
   .plane-class.legendary {
     background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
     color: #451a03;
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
   }
 
   .plane-stats {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 12px;
-    font-family: 'Inter', 'Segoe UI', sans-serif;
+    margin-bottom: 14px;
+    display: flex;
+    gap: 16px;
+  }
+
+  .plane-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .select-plane-btn {
-    background: #e94560;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
     color: white;
     border: none;
-    padding: 8px 20px;
-    border-radius: 6px;
+    padding: 10px 24px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: bold;
     font-size: 14px;
     transition: all 0.2s;
-    font-family: 'Inter', 'Segoe UI', sans-serif;
+    width: 100%;
   }
 
   .select-plane-btn:hover {
-    background: #ff6b6b;
-    transform: scale(1.05);
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+  }
+
+  /* ===== NOTIFICATIONS ===== */
+  #notifications {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 350px;
+    pointer-events: none;
+  }
+
+  .notification {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+    border-left: 4px solid #60a5fa;
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    animation: slideIn 0.3s ease-out;
+    pointer-events: auto;
+  }
+
+  .notification.success {
+    border-left-color: #4ade80;
+  }
+
+  .notification.error {
+    border-left-color: #ef4444;
+  }
+
+  .notification.warning {
+    border-left-color: #fbbf24;
+  }
+
+  .notification-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 3px;
+  }
+
+  .notification-message {
+    font-size: 12px;
+    color: #aaa;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(100px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes slideOut {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(100px); }
+  }
+
+  /* ===== MOBILE CONTROLS ===== */
+  .mobile-controls {
+    display: none;
+  }
+
+  body.mobile .mobile-controls {
+    display: flex;
+    gap: 14px;
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+  }
+
+  .mobile-button {
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    width: 60px;
+    height: 60px;
+    transition: all 0.15s;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    font-size: 24px;
+    color: white;
+  }
+
+  .mobile-button img {
+    width: 28px;
+    height: 28px;
+  }
+
+  .mobile-button.active {
+    transform: scale(0.9);
+    background-color: rgba(0, 0, 0, 0.8);
   }
 </style>
+
+<!-- ============================================ -->
+<!-- UI ELEMENTS -->
+<!-- ============================================ -->
+
+<!-- Flight HUD (Top Left) -->
+<div id="flight-hud">
+  <!-- Mode Indicator -->
+  <div id="mode-indicator" class="flight">FLIGHT</div>
+
+  <!-- Throttle Bar -->
+  <div class="stat-bar">
+    <div class="stat-label">
+      <span>Throttle</span>
+      <span class="stat-value" id="throttle-text">60%</span>
+    </div>
+    <div class="bar-container">
+      <div class="bar-fill throttle-bar" id="throttle-bar" style="width: 60%;"></div>
+    </div>
+  </div>
+
+  <!-- Flight Info -->
+  <div class="stat-bar">
+    <div class="flight-info">
+      <div class="info-box">
+        <div class="info-label">Speed</div>
+        <div class="info-value speed" id="speed-value">0</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">Altitude</div>
+        <div class="info-value altitude" id="altitude-value">0</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Checkpoint Tracker (Top Right) -->
+<div id="checkpoint-tracker">
+  <div class="checkpoint-title">Checkpoint</div>
+  <div class="checkpoint-value"><span id="checkpoint-current">0</span>/<span id="checkpoint-total">0</span></div>
+  <div class="checkpoint-laps">Laps: <span id="laps-value">0</span></div>
+</div>
+
+<!-- Controls Help (Bottom Left) -->
+<div id="controls-help">
+  <div class="control-row"><span class="control-key">W/S</span> Throttle</div>
+  <div class="control-row"><span class="control-key">A/D</span> Yaw/Steer</div>
+  <div class="control-row"><span class="control-key">Mouse</span> Pitch/Roll</div>
+  <div class="control-row"><span class="control-key">Space</span> Brake</div>
+  <div class="control-row"><span class="control-key">Shift</span> Boost</div>
+</div>
+
+<!-- Select Plane Prompt (shown when on foot) -->
+<div id="select-plane-prompt" class="hidden">
+  <div class="prompt-icon">✈️</div>
+  <div class="prompt-text">Press <span class="key">E</span> to Select Aircraft</div>
+</div>
+
+<!-- Hangar Interaction Prompt -->
+<div id="hangar-prompt" class="hidden">Press E to open Hangar</div>
+
+<!-- Hangar Selection Overlay -->
+<div id="hangar-overlay" class="hidden">
+  <div id="hangar-panel">
+    <div id="hangar-header">
+      <h2 id="hangar-title">Select Aircraft</h2>
+      <button id="hangar-close">X</button>
+    </div>
+    <div id="plane-list"></div>
+  </div>
+</div>
+
+<!-- Notifications Container -->
+<div id="notifications"></div>
+
+<!-- Mobile Controls -->
+<div class="mobile-controls">
+  <a id="mobile-brake-button" class="mobile-button">
+    <img src="{{CDN_ASSETS_URL}}/icons/target.png" alt="Brake" />
+  </a>
+  <a id="mobile-boost-button" class="mobile-button">
+    <img src="{{CDN_ASSETS_URL}}/icons/jump.png" alt="Boost" />
+  </a>
+</div>
+
+<!-- ============================================ -->
+<!-- JAVASCRIPT -->
+<!-- ============================================ -->
+
+<script>
+  // ===== UI STATE =====
+  const UI = {
+    currentHangarId: null,
+    hangarPlanes: [],
+
+    inPlane: false,
+
+    // ===== UPDATE FUNCTIONS =====
+    updateFlightData(data) {
+      this.inPlane = data.inPlane || false;
+
+      // Speed
+      document.getElementById('speed-value').textContent = data.speed || 0;
+
+      // Altitude
+      document.getElementById('altitude-value').textContent = data.altitude || 0;
+
+      // Throttle
+      const throttle = data.throttle || 0;
+      document.getElementById('throttle-text').textContent = throttle + '%';
+      document.getElementById('throttle-bar').style.width = throttle + '%';
+
+      // Checkpoints
+      document.getElementById('checkpoint-current').textContent = data.checkpoint || 0;
+      document.getElementById('checkpoint-total').textContent = data.totalCheckpoints || 0;
+      document.getElementById('laps-value').textContent = data.laps || 0;
+
+      // Mode indicator
+      const modeEl = document.getElementById('mode-indicator');
+      const mode = data.mode || 'FLIGHT';
+      modeEl.textContent = mode;
+
+      // Set class based on mode
+      if (mode === 'ON FOOT') {
+        modeEl.className = 'on-foot';
+        // Show the "select plane" prompt when on foot
+        document.getElementById('select-plane-prompt').classList.remove('hidden');
+        document.getElementById('controls-help').classList.add('hidden');
+      } else if (mode === 'TAXI') {
+        modeEl.className = 'taxi';
+        document.getElementById('select-plane-prompt').classList.add('hidden');
+        document.getElementById('controls-help').classList.remove('hidden');
+      } else {
+        modeEl.className = 'flight';
+        document.getElementById('select-plane-prompt').classList.add('hidden');
+        document.getElementById('controls-help').classList.remove('hidden');
+      }
+    },
+
+    // ===== HANGAR UI =====
+    showHangarUI(hangarId, planes) {
+      this.currentHangarId = hangarId;
+      this.hangarPlanes = planes;
+
+      const overlay = document.getElementById('hangar-overlay');
+      const title = document.getElementById('hangar-title');
+      const list = document.getElementById('plane-list');
+
+      title.textContent = 'Select Aircraft - ' + hangarId.replace('hangar_', 'Hangar ');
+      list.innerHTML = '';
+
+      planes.forEach(plane => {
+        const item = document.createElement('div');
+        item.className = 'plane-item';
+
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'plane-name';
+        nameDiv.textContent = plane.name;
+
+        const classDiv = document.createElement('div');
+        classDiv.className = 'plane-class ' + plane.class;
+        classDiv.textContent = plane.class;
+
+        const statsDiv = document.createElement('div');
+        statsDiv.className = 'plane-stats';
+        if (plane.stats) {
+          statsDiv.innerHTML = `
+            <span class="plane-stat">Speed: ${plane.stats.maxSpeed}</span>
+            <span class="plane-stat">Handling: ${plane.stats.handling}</span>
+            <span class="plane-stat">Accel: ${plane.stats.acceleration}</span>
+          `;
+        }
+
+        const selectBtn = document.createElement('button');
+        selectBtn.className = 'select-plane-btn';
+        selectBtn.textContent = 'Select & Fly';
+        selectBtn.setAttribute('data-plane-id', plane.id);
+
+        item.appendChild(nameDiv);
+        item.appendChild(classDiv);
+        item.appendChild(statsDiv);
+        item.appendChild(selectBtn);
+        list.appendChild(item);
+      });
+
+      overlay.classList.remove('hidden');
+
+      // Unlock pointer for UI interaction
+      hytopia.lockPointer(false);
+    },
+
+    closeHangarUI() {
+      document.getElementById('hangar-overlay').classList.add('hidden');
+      this.currentHangarId = null;
+      this.hangarPlanes = [];
+
+      // Lock pointer back for flight controls
+      hytopia.lockPointer(true);
+    },
+
+    selectPlane(planeId) {
+      if (!this.currentHangarId) return;
+      hytopia.sendData({
+        type: 'PLANE_SELECTION_CONFIRMED',
+        hangarId: this.currentHangarId,
+        planeId: planeId
+      });
+      this.closeHangarUI();
+    },
+
+    // ===== HANGAR PROMPT =====
+    showHangarPrompt(text) {
+      const prompt = document.getElementById('hangar-prompt');
+      prompt.textContent = text;
+      prompt.classList.remove('hidden');
+    },
+
+    hideHangarPrompt() {
+      document.getElementById('hangar-prompt').classList.add('hidden');
+    },
+
+    // ===== NOTIFICATIONS =====
+    showNotification(title, message, type = 'info', duration = 4000) {
+      const container = document.getElementById('notifications');
+      const notif = document.createElement('div');
+      notif.className = 'notification ' + type;
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'notification-title';
+      titleEl.textContent = title;
+
+      const messageEl = document.createElement('div');
+      messageEl.className = 'notification-message';
+      messageEl.textContent = message;
+
+      notif.appendChild(titleEl);
+      notif.appendChild(messageEl);
+      container.appendChild(notif);
+
+      setTimeout(() => {
+        notif.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notif.remove(), 300);
+      }, duration);
+    }
+  };
+
+  // ===== HYTOPIA DATA HANDLER =====
+  hytopia.onData(data => {
+    // Flight data update
+    if (data.type === 'flight-update') {
+      UI.updateFlightData(data);
+    }
+
+    // Hangar prompt
+    if (data.type === 'hangar-prompt') {
+      if (data.show) {
+        UI.showHangarPrompt(data.text);
+      } else {
+        UI.hideHangarPrompt();
+      }
+    }
+
+    // Hangar contents received from server
+    if (data.type === 'HANGAR_CONTENTS') {
+      UI.showHangarUI(data.hangarId, data.planes);
+    }
+
+    // Plane spawned - close hangar UI
+    if (data.type === 'PLANE_SPAWNED') {
+      UI.closeHangarUI();
+      UI.showNotification('Ready for Takeoff!', data.planeId + ' is ready', 'success');
+    }
+
+    // Hangar error
+    if (data.type === 'HANGAR_ERROR') {
+      UI.showNotification('Error', data.error, 'error');
+    }
+
+    // Notification
+    if (data.type === 'notification') {
+      UI.showNotification(data.title, data.message, data.notifType || 'info', data.duration);
+    }
+  });
+
+  // ===== EVENT LISTENERS =====
+
+  // Close hangar button
+  document.getElementById('hangar-close').addEventListener('click', () => {
+    UI.closeHangarUI();
+  });
+
+  // Plane selection (event delegation)
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.classList.contains('select-plane-btn')) {
+      const planeId = e.target.getAttribute('data-plane-id');
+      if (planeId) {
+        UI.selectPlane(planeId);
+      }
+    }
+  });
+
+  // ESC to close hangar
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (!document.getElementById('hangar-overlay').classList.contains('hidden')) {
+        UI.closeHangarUI();
+      }
+    }
+  });
+
+  // Mobile controls
+  const mobileBreakBtn = document.getElementById('mobile-brake-button');
+  const mobileBoostBtn = document.getElementById('mobile-boost-button');
+
+  if (mobileBreakBtn) {
+    mobileBreakBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      mobileBreakBtn.classList.add('active');
+      hytopia.pressInput(' ', true);
+    });
+    mobileBreakBtn.addEventListener('touchend', e => {
+      e.preventDefault();
+      mobileBreakBtn.classList.remove('active');
+      hytopia.pressInput(' ', false);
+    });
+  }
+
+  if (mobileBoostBtn) {
+    mobileBoostBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      mobileBoostBtn.classList.add('active');
+      hytopia.pressInput('shift', true);
+    });
+    mobileBoostBtn.addEventListener('touchend', e => {
+      e.preventDefault();
+      mobileBoostBtn.classList.remove('active');
+      hytopia.pressInput('shift', false);
+    });
+  }
+
+  console.log('Flight Simulator UI Loaded');
+</script>
+
+<!-- Load SDK-compliant mobile controls -->
+<script>
+(function() {
+  fetch('{{CDN_ASSETS_URL}}/ui/mobile-controls.html')
+    .then(response => response.text())
+    .then(html => {
+      const container = document.createElement('div');
+      container.id = 'mobile-controls-container';
+      container.innerHTML = html;
+      document.body.appendChild(container);
+      console.log('[Mobile Controls] Loaded successfully');
+    })
+    .catch(err => console.error('[Mobile Controls] Failed to load:', err));
+})();
+</script>

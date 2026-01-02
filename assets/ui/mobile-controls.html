@@ -1,0 +1,194 @@
+<!-- ========================================
+  HYTOPIA SDK-COMPLIANT MOBILE CONTROLS
+  Flight Simulator - Airplane Game
+
+  Based on HYTOPIA_MOBILE_CONTROLS_GUIDE.md
+======================================== -->
+
+<div class="mobile-controls" id="mobile-controls">
+  <!-- LEFT: Throttle controls -->
+  <div class="mobile-left-controls">
+    <div class="throttle-group">
+      <button id="mobile-throttle-up-btn" class="mobile-btn throttle-btn up-btn" aria-label="Throttle Up">
+        <span class="btn-icon">&#x25B2;</span>
+        <span class="btn-label">UP</span>
+      </button>
+      <div class="throttle-label">THROTTLE</div>
+      <button id="mobile-throttle-down-btn" class="mobile-btn throttle-btn down-btn" aria-label="Throttle Down">
+        <span class="btn-icon">&#x25BC;</span>
+        <span class="btn-label">DOWN</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Flight controls -->
+  <div class="mobile-right-controls">
+    <div class="mobile-btn-row">
+      <button id="mobile-yaw-left-btn" class="mobile-btn yaw-btn" aria-label="Yaw Left">
+        <span class="btn-icon">&#x21BA;</span>
+        <span class="btn-label">YAW L</span>
+      </button>
+      <button id="mobile-yaw-right-btn" class="mobile-btn yaw-btn" aria-label="Yaw Right">
+        <span class="btn-icon">&#x21BB;</span>
+        <span class="btn-label">YAW R</span>
+      </button>
+    </div>
+    <div class="mobile-btn-row">
+      <button id="mobile-brake-btn" class="mobile-btn brake-btn" aria-label="Brake">
+        <span class="btn-icon">&#x23F9;</span>
+        <span class="btn-label">BRAKE</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Altitude/Speed HUD -->
+  <div class="flight-hud" id="flight-hud">
+    <div class="hud-item"><span class="hud-label">ALT</span><span class="hud-value" id="altitude">0</span></div>
+    <div class="hud-item"><span class="hud-label">SPD</span><span class="hud-value" id="speed">0</span></div>
+  </div>
+</div>
+
+<style>
+  .mobile-controls { display: none; }
+
+  body.mobile .mobile-controls,
+  body.mobile.gameplay-active .mobile-controls {
+    display: block;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 2000;
+  }
+
+  body.mobile .mobile-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    border: 3px solid rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(8px);
+    color: white;
+    pointer-events: auto;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: transform 0.1s ease;
+  }
+
+  body.mobile .mobile-btn:active,
+  body.mobile .mobile-btn.active {
+    transform: scale(0.9);
+    background: rgba(50, 50, 50, 0.9);
+  }
+
+  body.mobile .btn-icon { font-size: 20px; margin-bottom: 2px; }
+  body.mobile .btn-label { font-size: 8px; font-weight: 700; }
+
+  /* Left controls - Throttle */
+  body.mobile .mobile-left-controls { position: fixed; left: 20px; bottom: 100px; }
+  body.mobile .throttle-group { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  body.mobile .throttle-label { color: white; font-size: 10px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+
+  /* Right controls */
+  body.mobile .mobile-right-controls { position: fixed; right: 20px; bottom: 40px; }
+  body.mobile .mobile-btn-row { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 12px; }
+
+  /* Throttle buttons - Blue/Cyan */
+  body.mobile .throttle-btn {
+    background: linear-gradient(145deg, rgba(0, 150, 200, 0.85), rgba(0, 120, 170, 0.9));
+    border-color: rgba(0, 200, 255, 0.6);
+  }
+  body.mobile .up-btn.active { box-shadow: 0 0 20px rgba(0, 255, 150, 0.6); }
+  body.mobile .down-btn.active { box-shadow: 0 0 20px rgba(255, 150, 0, 0.6); }
+
+  /* Yaw buttons - Orange */
+  body.mobile .yaw-btn {
+    background: linear-gradient(145deg, rgba(255, 150, 50, 0.85), rgba(220, 120, 30, 0.9));
+    border-color: rgba(255, 180, 100, 0.6);
+  }
+
+  /* Brake - Red */
+  body.mobile .brake-btn {
+    background: linear-gradient(145deg, rgba(200, 50, 50, 0.85), rgba(150, 30, 30, 0.9));
+    border-color: rgba(255, 100, 100, 0.6);
+  }
+
+  /* Flight HUD */
+  body.mobile .flight-hud {
+    position: fixed;
+    top: 60px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    pointer-events: none;
+  }
+
+  .hud-item {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: flex;
+    gap: 10px;
+    font-family: monospace;
+  }
+
+  .hud-label { color: #888; font-size: 10px; }
+  .hud-value { color: #0f0; font-size: 14px; font-weight: bold; }
+
+  @media (max-height: 500px) {
+    body.mobile .mobile-btn { width: 50px; height: 50px; }
+    body.mobile .btn-icon { font-size: 16px; }
+  }
+</style>
+
+<script>
+(function() {
+  'use strict';
+  const isMobile = document.body.classList.contains('mobile') || (window.hytopia && window.hytopia.isMobile);
+  if (!isMobile) return;
+
+  const BUTTONS = {
+    'mobile-throttle-up-btn':   { input: 'w',  behavior: 'hold', name: 'Throttle Up' },
+    'mobile-throttle-down-btn': { input: 's',  behavior: 'hold', name: 'Throttle Down' },
+    'mobile-yaw-left-btn':      { input: 'q',  behavior: 'hold', name: 'Yaw Left' },
+    'mobile-yaw-right-btn':     { input: 'e',  behavior: 'hold', name: 'Yaw Right' },
+    'mobile-brake-btn':         { input: 'sp', behavior: 'hold', name: 'Brake' }
+  };
+
+  function setupButton(id, cfg) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    let pressed = false, touchId = null;
+
+    function press(tid) {
+      if (pressed) return;
+      pressed = true; touchId = tid;
+      btn.classList.add('active');
+      if (window.hytopia?.pressInput) window.hytopia.pressInput(cfg.input, true);
+    }
+
+    function release(tid) {
+      if (!pressed || (tid !== undefined && tid !== touchId)) return;
+      pressed = false; touchId = null;
+      btn.classList.remove('active');
+      if (window.hytopia?.pressInput) window.hytopia.pressInput(cfg.input, false);
+    }
+
+    btn.addEventListener('touchstart', e => { e.preventDefault(); press(e.changedTouches[0].identifier); }, { passive: false });
+    btn.addEventListener('touchend', e => { e.preventDefault(); for (const t of e.changedTouches) if (t.identifier === touchId) release(t.identifier); }, { passive: false });
+    btn.addEventListener('touchcancel', e => { for (const t of e.changedTouches) if (t.identifier === touchId) release(t.identifier); }, { passive: false });
+    btn.addEventListener('mousedown', e => { e.preventDefault(); press(-1); });
+    btn.addEventListener('mouseup', () => release(-1));
+    btn.addEventListener('mouseleave', () => { if (pressed) release(-1); });
+    btn.addEventListener('contextmenu', e => e.preventDefault());
+  }
+
+  setTimeout(() => { for (const [id, cfg] of Object.entries(BUTTONS)) setupButton(id, cfg); }, 100);
+})();
+</script>
