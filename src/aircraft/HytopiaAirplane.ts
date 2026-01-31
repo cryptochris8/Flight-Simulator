@@ -99,9 +99,10 @@ export class HytopiaAirplane {
 
     if (this.options.startInAir || FLIGHT_MODE !== "realistic") {
       // Start airborne with forward velocity (in the direction we're facing)
-      const fwdX = -Math.sin(yawRad);
-      const fwdZ = -Math.cos(yawRad);
-      state.velocity = { x: fwdX * 30, y: 0, z: fwdZ * 30 };
+      // Forward: yaw=0 → +Z, yaw=90° → +X
+      const fwdX = Math.sin(yawRad);
+      const fwdZ = Math.cos(yawRad);
+      state.velocity = { x: fwdX * 40, y: 0, z: fwdZ * 40 };
       state.isGrounded = false;
     } else {
       // Start grounded with zero velocity (in hangar) - realistic mode only
@@ -148,37 +149,39 @@ export class HytopiaAirplane {
   private setupCamera(player: Player): void {
     if (!this.entity) return;
 
-    // Third-person mode
+    // Third-person mode for flight
     player.camera.setMode(PlayerCameraMode.THIRD_PERSON);
 
-    // Track the airplane so camera always looks at it
+    // Track the airplane entity
     player.camera.setTrackedEntity(this.entity);
 
-    // Standard FOV
-    player.camera.setFov(75);
+    // Wider FOV for better peripheral vision while flying
+    player.camera.setFov(85);
 
-    // Default zoom
-    player.camera.setZoom(2);
+    // Zoom out more for better visibility
+    player.camera.setZoom(4);
+
+    // Camera offset - behind and above the plane
+    player.camera.setOffset({ x: 0, y: 8, z: -25 });
 
     console.log('Camera setup complete for airplane');
   }
 
   /**
    * Update camera position to follow behind airplane
+   * Uses smooth camera tracking based on velocity direction
    */
   private updateCamera(): void {
     if (!this.entity || !this.player) return;
 
-    // Get actual position from the entity (physics engine handles position)
-    const pos = this.entity.position;
+    // The camera tracks the entity automatically via setTrackedEntity
+    // We can dynamically adjust offset based on speed for cinematic effect
+    const vel = this.physics.state.velocity;
+    const speed = Math.hypot(vel.x, vel.y, vel.z);
 
-    // Position camera behind and above the plane using setAttachedToPosition
-    // This sets the camera at a fixed world position each tick
-    this.player.camera.setAttachedToPosition({
-      x: pos.x,
-      y: pos.y + 20,   // Above the plane
-      z: pos.z + 50    // Behind the plane
-    });
+    // Pull camera back more at higher speeds
+    const dynamicZoom = 4 + Math.min(speed / 40, 3);
+    this.player.camera.setZoom(dynamicZoom);
   }
 
   /**

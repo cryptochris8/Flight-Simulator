@@ -2,7 +2,7 @@
  * Server-side handler for hangar interactions
  */
 
-import { Player, World } from 'hytopia';
+import { Player, PlayerEntity, World } from 'hytopia';
 import type { OwnedPlane } from '../gameplay/OwnedPlaneTypes';
 import type { AirportConfig, HangarSlot } from '../gameplay/AirportTypes';
 import { HytopiaAirplane } from '../aircraft/HytopiaAirplane';
@@ -42,15 +42,18 @@ export class HangarServer {
   private world: World;
   private airport: AirportConfig;
   private playerAirplanes: Map<Player, HytopiaAirplane>;
+  private playerEntities: Map<Player, PlayerEntity>;
 
   constructor(
     world: World,
     airport: AirportConfig,
-    playerAirplanes: Map<Player, HytopiaAirplane>
+    playerAirplanes: Map<Player, HytopiaAirplane>,
+    playerEntities: Map<Player, PlayerEntity>
   ) {
     this.world = world;
     this.airport = airport;
     this.playerAirplanes = playerAirplanes;
+    this.playerEntities = playerEntities;
   }
 
   /**
@@ -115,6 +118,13 @@ export class HangarServer {
     if (existingAirplane) {
       existingAirplane.despawn();
       this.playerAirplanes.delete(player);
+    }
+
+    // Despawn player entity (they're getting into a plane)
+    const existingPlayerEntity = this.playerEntities.get(player);
+    if (existingPlayerEntity) {
+      existingPlayerEntity.despawn();
+      this.playerEntities.delete(player);
     }
 
     // Get model config for selected plane

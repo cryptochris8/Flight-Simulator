@@ -54,7 +54,7 @@ export class HybridFlightPhysics {
 
     this.state = {
       position: v3(0, 220, 0),
-      velocity: v3(0, 0, -40),
+      velocity: v3(0, 0, 0),  // Will be set by HytopiaAirplane based on spawn yaw
       yaw: 0,
       pitch: 0,
       roll: 0,
@@ -110,10 +110,12 @@ export class HybridFlightPhysics {
   private forwardFromEuler(pitch: number, yaw: number): Vec3 {
     const cp = Math.cos(pitch), sp = Math.sin(pitch);
     const cy = Math.cos(yaw),   sy = Math.sin(yaw);
+    // Forward direction: yaw=0 → +Z, yaw=90° → +X
+    // Pitch up → positive Y component
     return v3(
-      -sy * cp,
-       sp,
-      -cy * cp
+      sy * cp,
+      -sp,
+      cy * cp
     );
   }
 }

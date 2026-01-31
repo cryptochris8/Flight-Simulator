@@ -27,8 +27,9 @@ export const qFromEuler = (pitch: number, yaw: number, roll: number): Quat => {
 
 export const forward = (q: Quat): Vec3 => {
   // Rotate (0,0,1) by quaternion q (assuming +Z forward for HYTOPIA)
+  // Standard quaternion rotation of unit Z vector
   const x = 2*(q.x*q.z + q.w*q.y);
   const y = 2*(q.y*q.z - q.w*q.x);
   const z = 1 - 2*(q.x*q.x + q.y*q.y);
-  return v3(-x, -y, z);  // Flipped to +Z forward
+  return v3(x, -y, z);  // +Z forward, pitch up = negative Y
 };

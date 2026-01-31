@@ -38,21 +38,21 @@ export class ArcadeFlightPhysics {
 
   constructor(cfg?: Partial<ArcadeFlightConfig>) {
     this.cfg = Object.assign({
-      maxSpeed: 120,
-      accel: 40,
-      decel: 30,
-      turnRateYaw: 1.8,
-      turnRatePitch: 1.8,
-      turnRateRoll: 2.4,
-      autoLevelStrength: 1.8,
-      gravity: 3,
-      boostMultiplier: 1.5,
-      brakeMultiplier: 0.4
+      maxSpeed: 100,         // Slightly slower for better control
+      accel: 35,             // Smooth acceleration
+      decel: 25,             // Gradual deceleration
+      turnRateYaw: 1.5,      // Yaw rate (A/D keys)
+      turnRatePitch: 1.2,    // Pitch rate (mouse Y)
+      turnRateRoll: 1.8,     // Roll rate (mouse X)
+      autoLevelStrength: 2.5,// Stronger auto-level for stability
+      gravity: 2.5,          // Gentler gravity
+      boostMultiplier: 1.4,
+      brakeMultiplier: 0.3
     }, cfg);
 
     this.state = {
       position: v3(0, 200, 0),
-      velocity: v3(0, 0, -20),
+      velocity: v3(0, 0, 0),  // Will be set by HytopiaAirplane based on spawn yaw
       yaw: 0,
       pitch: 0,
       roll: 0,
@@ -75,14 +75,23 @@ export class ArcadeFlightPhysics {
     const accel = speedDiff > 0 ? c.accel : c.decel;
     const newSpeed = currentSpeed + clamp(speedDiff, -accel*dt, accel*dt);
 
+    // Apply control inputs
     s.yaw   += input.yaw   * c.turnRateYaw   * dt;
     s.pitch += input.pitch * c.turnRatePitch * dt;
     s.roll  += input.roll  * c.turnRateRoll  * dt;
 
-    const rollAuto = -s.roll * c.autoLevelStrength * dt;
-    s.roll += rollAuto;
+    // Auto-level roll when no roll input
+    if (Math.abs(input.roll) < 0.1) {
+      s.roll -= s.roll * c.autoLevelStrength * dt;
+    }
 
-    s.pitch = clamp(s.pitch, -Math.PI/3, Math.PI/3);
+    // Auto-level pitch when no pitch input (gentler)
+    if (Math.abs(input.pitch) < 0.1) {
+      s.pitch -= s.pitch * c.autoLevelStrength * 0.5 * dt;
+    }
+
+    // Clamp pitch to prevent over-rotation
+    s.pitch = clamp(s.pitch, -Math.PI/4, Math.PI/4);
 
     const forward = this.forwardFromEuler(s.pitch, s.yaw);
     s.velocity = mul(forward, newSpeed);
@@ -95,10 +104,12 @@ export class ArcadeFlightPhysics {
   private forwardFromEuler(pitch: number, yaw: number): Vec3 {
     const cp = Math.cos(pitch), sp = Math.sin(pitch);
     const cy = Math.cos(yaw),   sy = Math.sin(yaw);
+    // Forward direction: yaw=0 → +Z, yaw=90° → +X
+    // Pitch up → positive Y component
     return v3(
-      -sy * cp,
-       sp,
-      -cy * cp
+      sy * cp,
+      -sp,
+      cy * cp
     );
   }
 }
